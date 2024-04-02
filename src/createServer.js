@@ -3,9 +3,9 @@
 
 const http = require('http');
 const fs = require('fs');
-const zlib = require('zlib');
 const { IncomingForm } = require('formidable');
 const { pipeline } = require('stream');
+const { getCompressionOptions } = require('./getCompressionOptions');
 
 const compressionTypeAvailable = ['gzip', 'br', 'deflate'];
 
@@ -80,20 +80,10 @@ function createServer() {
     );
 
     const fileStream = fs.createReadStream(filePath);
-    const compressedStream =
-      compressionType === 'gzip'
-        ? zlib.createGzip()
-        : compressionType === 'br'
-          ? zlib.createBrotliCompress()
-          : zlib.createDeflate();
-    const ext =
-      compressionType === 'br'
-        ? 'br'
-        : compressionType === 'deflate'
-          ? 'dfl'
-          : 'gz';
+    const { stream: compressedStream, extension } =
+      getCompressionOptions(compressionType);
 
-    compressedStream.pipe(fs.createWriteStream(`${filePath}.${ext}`));
+    compressedStream.pipe(fs.createWriteStream(`${filePath}.${extension}`));
 
     pipeline(fileStream, compressedStream, res, (err) => {
       if (err) {
