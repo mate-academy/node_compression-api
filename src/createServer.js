@@ -31,63 +31,65 @@ function createServer() {
       return;
     }
 
-    form.parse(req, (error, { compressionType: fields }, { file: files }) => {
-      if (error || !fields || !files) {
-        res.statusCode = 400;
-        res.end('Error');
+    if (pathname === '/' && req.method === 'POST') {
+      form.parse(req, (error, { compressionType: fields }, { file: files }) => {
+        if (error || !fields || !files) {
+          res.statusCode = 400;
+          res.end('Error');
 
-        return;
-      }
+          return;
+        }
 
-      const compressionTypes = ['gzip', 'deflate', 'br'];
-      const [compressionType] = fields;
-      const [file] = files;
+        const compressionTypes = ['gzip', 'deflate', 'br'];
+        const [compressionType] = fields;
+        const [file] = files;
 
-      if (!compressionTypes.includes(compressionType)) {
-        res.statusCode = 400;
-        res.end('Change compression type');
+        if (!compressionTypes.includes(compressionType)) {
+          res.statusCode = 400;
+          res.end('Change compression type');
 
-        return;
-      }
+          return;
+        }
 
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=${file.originalFilename}.${compressionType}`,
-      );
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=${file.originalFilename}.${compressionType}`,
+        );
 
-      const fileStream = fs.createReadStream(file.filepath);
+        const fileStream = fs.createReadStream(file.filepath);
 
-      let compressed;
+        let compressed;
 
-      switch (compressionType) {
-        case 'gzip':
-          compressed = zlib.createGzip();
-          break;
+        switch (compressionType) {
+          case 'gzip':
+            compressed = zlib.createGzip();
+            break;
 
-        case 'deflate':
-          compressed = zlib.createDeflate();
-          break;
+          case 'deflate':
+            compressed = zlib.createDeflate();
+            break;
 
-        case 'br':
-          compressed = zlib.createBrotliCompress();
-          break;
+          case 'br':
+            compressed = zlib.createBrotliCompress();
+            break;
 
-        default:
-          break;
-      }
+          default:
+            break;
+        }
 
-      fileStream
-        .on('error', () => {
-          res.statusCode = 500;
-          res.end('Server error');
-        })
-        .pipe(compressed)
-        .on('error', () => {})
-        .pipe(res)
-        .on('error', () => {});
+        fileStream
+          .on('error', () => {
+            res.statusCode = 500;
+            res.end('Server error');
+          })
+          .pipe(compressed)
+          .on('error', () => {})
+          .pipe(res)
+          .on('error', () => {});
 
-      res.on('close', () => fileStream.destroy());
-    });
+        res.on('close', () => fileStream.destroy());
+      });
+    }
   });
 
   return server;
