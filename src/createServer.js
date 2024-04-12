@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const zlib = require('zlib');
+const path = require('path');
 const formidable = require('formidable');
 
 function createServer() {
@@ -9,10 +10,21 @@ function createServer() {
   server.on('request', (req, res) => {
     const { pathname } = new URL(req.url, `http://${req.headers.host}`);
     const form = new formidable.IncomingForm();
+    const filePath = path.resolve('src/public', 'index.html');
 
     if (pathname === '/' && req.method === 'GET') {
-      res.statusCode = 200;
-      res.end('Ok');
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.statusCode = 500;
+          res.end('Server error');
+
+          return null;
+        }
+
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html');
+        res.end(data);
+      });
 
       return;
     }
@@ -31,65 +43,70 @@ function createServer() {
       return;
     }
 
-    if (pathname === '/' && req.method === 'POST') {
-      form.parse(req, (error, { compressionType: fields }, { file: files }) => {
-        if (error || !fields || !files) {
-          res.statusCode = 400;
-          res.end('Error');
+    form.parse(req, (error, { compressionType: fields }, { file: files }) => {
+      if (error || !fields || !files) {
+        res.statusCode = 400;
+        res.end('Error parsing form data');
 
-          return;
-        }
+        return;
+      }
 
-        const compressionTypes = ['gzip', 'deflate', 'br'];
-        const [compressionType] = fields;
-        const [file] = files;
+      const compressionTypes = ['gzip', 'deflate', 'br'];
+      const [compressionType] = fields;
+      const [file] = files;
 
-        if (!compressionTypes.includes(compressionType)) {
-          res.statusCode = 400;
-          res.end('Change compression type');
+      if (!compressionType || !file) {
+        res.statusCode = 400;
+        res.end('Missing compression type or file');
 
-          return;
-        }
+        return;
+      }
 
-        res.setHeader(
-          'Content-Disposition',
-          `attachment; filename=${file.originalFilename}.${compressionType}`,
-        );
+      if (!compressionTypes.includes(compressionType)) {
+        res.statusCode = 400;
+        res.end('Change compression type');
 
-        const fileStream = fs.createReadStream(file.filepath);
+        return;
+      }
 
-        let compressed;
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=${file.originalFilename}.${compressionType}`,
+      );
 
-        switch (compressionType) {
-          case 'gzip':
-            compressed = zlib.createGzip();
-            break;
+      const fileStream = fs.createReadStream(file.filepath);
 
-          case 'deflate':
-            compressed = zlib.createDeflate();
-            break;
+      let compressed;
 
-          case 'br':
-            compressed = zlib.createBrotliCompress();
-            break;
+      switch (compressionType) {
+        case 'gzip':
+          compressed = zlib.createGzip();
+          break;
 
-          default:
-            break;
-        }
+        case 'deflate':
+          compressed = zlib.createDeflate();
+          break;
 
-        fileStream
-          .on('error', () => {
-            res.statusCode = 500;
-            res.end('Server error');
-          })
-          .pipe(compressed)
-          .on('error', () => {})
-          .pipe(res)
-          .on('error', () => {});
+        case 'br':
+          compressed = zlib.createBrotliCompress();
+          break;
 
-        res.on('close', () => fileStream.destroy());
-      });
-    }
+        default:
+          break;
+      }
+
+      fileStream
+        .on('error', () => {
+          res.statusCode = 500;
+          res.end('Server error');
+        })
+        .pipe(compressed)
+        .on('error', () => {})
+        .pipe(res)
+        .on('error', () => {});
+
+      res.on('close', () => fileStream.destroy());
+    });
   });
 
   return server;
