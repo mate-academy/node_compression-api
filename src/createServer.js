@@ -71,7 +71,7 @@ function createServer() {
 
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename=${file.originalFilename}.${compressionType}`,
+        `attachment; filename=${encodeURIComponent(file.originalFilename)}.${compressionType}`,
       );
 
       const fileStream = fs.createReadStream(file.filepath);
