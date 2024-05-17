@@ -5,6 +5,7 @@ const http = require('http');
 const formidable = require('formidable');
 const fs = require('fs');
 const zlib = require('zlib');
+const path = require('path');
 
 const compressionTypes = ['gzip', 'deflate', 'br'];
 
@@ -33,9 +34,19 @@ function createServer() {
     const pathname = url.pathname;
 
     if (pathname === '/' && req.method === 'GET') {
-      res.setHeader('content-type', 'plain/text');
-      res.statusCode = 200;
-      res.end();
+      const filePath = path.join(__dirname, '..', 'public', 'index.html');
+
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.setHeader('Content-Type', 'text/plain');
+          res.statusCode = 500;
+          res.end('Internal Server Error');
+        } else {
+          res.setHeader('Content-Type', 'text/html');
+          res.statusCode = 200;
+          res.end(data);
+        }
+      });
 
       return;
     }
