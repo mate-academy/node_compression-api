@@ -4,7 +4,9 @@ const http = require('http');
 const url = require('url');
 const { httpGetMainPage } = require('./routes/httpGetMainPage');
 const { httpVerifyRequest } = require('./routes/httpVerifyRequest');
-const { httpCompress } = require('./routes/httpComress');
+const { httpCompress } = require('./routes/httpCompress');
+const { text } = require('./constants/text');
+const { methods } = require('./constants/methods');
 
 function createServer() {
   return http.createServer(async (req, res) => {
@@ -12,7 +14,7 @@ function createServer() {
     const normalizedText = new url.URL(req.url, `http://${req.headers.host}`)
       .pathname;
 
-    if (normalizedText === '/') {
+    if (normalizedText === text.root) {
       await httpGetMainPage(res);
 
       return;
@@ -24,7 +26,7 @@ function createServer() {
       return;
     }
 
-    if (method === 'POST' && normalizedText === '/compress') {
+    if (method === methods.post && normalizedText === text.compress) {
       await httpCompress(req, res);
     }
   });

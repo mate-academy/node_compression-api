@@ -1,20 +1,24 @@
+const { methods } = require('../constants/methods');
+const { response } = require('../constants/response');
+const { text } = require('../constants/text');
+
 function httpVerifyRequest(res, normalizedPath, method) {
   let result = true;
 
   res.setHeader('Content-Type', 'text/plain');
 
   if (normalizedPath !== '/compress') {
-    res.statusCode = 404;
+    res.statusCode = response[404].statusCode;
 
-    res.end(`Page not found`);
+    res.end(response[404].messages.notFound);
 
     result = false;
   }
 
-  if (method !== 'POST' && normalizedPath === '/compress') {
-    res.statusCode = 400;
+  if (method !== methods.post && normalizedPath === text.compress) {
+    res.statusCode = response[400].statusCode;
 
-    res.end(`It should be POST request for "/compress"`);
+    res.end(response[400].messages.notFound);
 
     result = false;
   }

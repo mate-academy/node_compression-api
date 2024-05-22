@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { response } = require('../constants/response');
 
 async function httpGetMainPage(res) {
   const indexFile = path.join(__dirname, '..', '..', 'public', 'index.html');
@@ -8,14 +9,14 @@ async function httpGetMainPage(res) {
     res.setHeader('Content-Type', 'text/html');
 
     if (err) {
-      res.statusCode = 503;
+      res.statusCode = response[503].statusCode;
 
-      res.end('Service Unavailable');
+      res.end(response[503].messages.service);
 
       return;
     }
 
-    res.statusCode = 200;
+    res.statusCode = response[200].statusCode;
     res.end(data);
   });
 }

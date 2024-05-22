@@ -2,6 +2,7 @@ const fs = require('fs');
 const zlib = require('zlib');
 const { pipeline } = require('stream');
 const formidable = require('formidable');
+const { response } = require('../constants/response');
 
 async function httpCompress(req, res) {
   const form = new formidable.Formidable({});
@@ -21,8 +22,8 @@ async function httpCompress(req, res) {
 
     const onError = (e) => {
       if (e) {
-        res.statusCode = 503;
-        res.end('Service unavailable');
+        res.statusCode = response[503].statusCode;
+        res.end(response[503].messages.service);
       }
     };
 
@@ -36,13 +37,13 @@ async function httpCompress(req, res) {
       extension = 'br';
       compressionStream = zlib.createBrotliCompress();
     } else {
-      res.statusCode = 400;
-      res.end('Inappropriate encoding extension.');
+      res.statusCode = response[400].statusCode;
+      res.end(response[400].messages.encoding);
 
       return;
     }
 
-    res.statusCode = 200;
+    res.statusCode = response[200].statusCode;
 
     res.setHeader(
       'Content-Disposition',
@@ -59,7 +60,9 @@ async function httpCompress(req, res) {
       readFileStream.destroy();
     });
   } catch (err) {
-    res.writeHead(err.httpCode || 400, { 'Content-Type': 'text/plain' });
+    res.writeHead(err.httpCode || response[400].statusCode, {
+      'Content-Type': 'text/plain',
+    });
     res.end(String(err));
   }
 }
