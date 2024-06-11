@@ -3,7 +3,7 @@
 const fs = require('fs');
 const archiver = require('archiver');
 const { setContentAttachment } = require('../../helpers/setContentAttachment');
-const { CompressionMap } = require('../../modules/compression/compressionMap');
+const { CompressionMap } = require('../../modules/compression/CompressionMap');
 
 function responseCompressedFiles(response, files, compressFormat) {
   const archive = archiver('zip');

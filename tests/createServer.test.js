@@ -9,7 +9,7 @@ const { faker } = require('@faker-js/faker');
 const zlib = require('zlib');
 const util = require('util');
 const { createServer } = require('../src/createServer');
-const { CompressionMap } = require('../src/modules/compression/compressionMap');
+const { CompressionMap } = require('../src/modules/compression/CompressionMap');
 
 const PORT = 5701;
 const HOST = `http://localhost:${PORT}`;

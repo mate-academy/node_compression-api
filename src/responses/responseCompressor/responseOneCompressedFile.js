@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const { setContentAttachment } = require('../../helpers/setContentAttachment');
-const { CompressionMap } = require('../../modules/compression/compressionMap');
+const { CompressionMap } = require('../../modules/compression/CompressionMap');
 
 function responseOneCompressedFile(response, files, compressFormat) {
   const file = fs.createReadStream(files[0].filepath);
