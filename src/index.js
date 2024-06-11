@@ -5,7 +5,7 @@
 const { createServer } = require('./createServer');
 
 createServer()
-  .listen(process.env.PORT || 5700, () => {
+  .listen(process.env.PORT || 5700, '0.0.0.0', () => {
     console.log('Server started! 🚀');
     console.log(`Available at http://localhost:${process.env.PORT || 5700}`);
   });
