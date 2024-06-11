@@ -9,7 +9,6 @@ const { faker } = require('@faker-js/faker');
 const zlib = require('zlib');
 const util = require('util');
 const { createServer } = require('../src/createServer');
-const { getExt } = require('../src/modules/compression/getExt');
 const { CompressionMap } = require('../src/modules/compression/compressionMap');
 
 const PORT = 5701;
