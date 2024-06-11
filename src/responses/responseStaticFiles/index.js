@@ -10,7 +10,7 @@ const readFile = (filePath) => fs.readFile(inPublic(filePath), 'utf-8');
 async function responseStaticFiles(request, response) {
   const sendError = createErrorSender(response);
   const { url, headers } = request;
-  const { pathname } = new URL(url, `http://${headers.host}`);
+  const { pathname } = new URL(url, `${process.env.PROTOCOL || 'http'}://${headers.host}`);
   const filePath = url === '/' ? 'index.html' : pathname;
   const ext = path.extname(filePath);
 
