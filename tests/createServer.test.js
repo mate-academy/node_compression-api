@@ -10,6 +10,7 @@ const zlib = require('zlib');
 const util = require('util');
 const { createServer } = require('../src/createServer');
 const { getExt } = require('../src/modules/compression/getExt');
+const { CompressionMap } = require('../src/modules/compression/compressionMap');
 
 const PORT = 5701;
 const HOST = `http://localhost:${PORT}`;
@@ -136,7 +137,7 @@ describe('createServer', () => {
             })
               .then(
                 (res) => {
-                  const ext = getExt(compressionType);
+                  const ext = CompressionMap[compressionType].ext;
                   const expectedHeader = `attachment; filename=${filename}.${ext}`;
 
                   expect(res.headers['content-disposition'])

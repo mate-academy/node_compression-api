@@ -2,9 +2,8 @@
 
 const fs = require('fs');
 const archiver = require('archiver');
-const { createCompress } = require('../../modules/compression/createCompress');
-const { getExt } = require('../../modules/compression/getExt');
 const { setContentAttachment } = require('../../helpers/setContentAttachment');
+const { CompressionMap } = require('../../modules/compression/compressionMap');
 
 function responseCompressedFiles(response, files, compressFormat) {
   const archive = archiver('zip');
@@ -12,10 +11,10 @@ function responseCompressedFiles(response, files, compressFormat) {
   response.on('close', () => archive.destroy());
   setContentAttachment(response, `${files.length}-files.zip`);
 
-  files.forEach(file => {
-    const newExt = getExt(compressFormat);
+  files.forEach((file) => {
+    const newExt = CompressionMap[compressFormat].ext;
     const fileStream = fs.createReadStream(file.filepath);
-    const compressStream = createCompress(compressFormat);
+    const compressStream = CompressionMap[compressFormat].createCompress();
 
     fileStream.pipe(compressStream);
 
