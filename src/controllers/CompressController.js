@@ -54,21 +54,6 @@ class CompressController extends AbstractController {
           this.response.end('Server Error');
         });
 
-        // fileStream
-        //   .on('error', (error) => {
-        //     this.response.statusCode = 500;
-        //
-        //     this.response.end('Failed to read file', error);
-        //   })
-        //   .pipe(gzipStream)
-        //   .on('error', (error) => {
-        //     this.response.statusCode = 500;
-        //
-        //     this.response.end('Failed to compress file', error);
-        //   })
-        //   .pipe(this.response)
-        //   .on('error', (error) => {});
-
         this.response.on('close', () => {
           fileStream.destroy();
         });
@@ -80,7 +65,6 @@ class CompressController extends AbstractController {
           'Content-Disposition',
           `attachment; filename=${file.originalFilename}.${compressionType}`,
         );
-        // this.response.setHeader('Content-Encoding', 'gzip');
       },
     );
   }
