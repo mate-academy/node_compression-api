@@ -4,6 +4,7 @@ const http = require('http');
 const zlib = require('zlib');
 const formidable = require('formidable');
 const fs = require('fs');
+const path = require('path');
 
 const compressionTypes = ['gzip', 'deflate', 'br'];
 
@@ -29,8 +30,40 @@ function createServer() {
     const pathname = url.pathname;
 
     if (pathname === '/' && req.method === 'GET') {
-      res.statusCode = 200;
-      res.end('Ready');
+      fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
+        if (err) {
+          res.statusCode = 500;
+          res.end('Error loading the form');
+
+          return;
+        }
+
+        res.setHeader('Content-Type', 'text/html');
+        res.statusCode = 200;
+        res.end(data);
+      });
+
+      return;
+    }
+
+    const ext = path.extname(pathname);
+    const staticFiles = ['.css', '.js', '.png', '.jpg', '.gif'];
+
+    if (staticFiles.includes(ext)) {
+      const filePath = path.join(__dirname, pathname);
+
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.statusCode = 404;
+          res.end('File not found');
+
+          return;
+        }
+
+        res.setHeader('Content-Type', getContentType(ext));
+        res.statusCode = 200;
+        res.end(data);
+      });
 
       return;
     }
@@ -49,16 +82,16 @@ function createServer() {
       return;
     }
 
-    form.parse(req, (error, { compressionType: fields }, { file: files }) => {
-      if (error || !files || !fields) {
+    form.parse(req, (error, fields, files) => {
+      if (error || !files.file || !fields.compressionType) {
         res.statusCode = 400;
         res.end('Bad request');
 
         return;
       }
 
-      const [compressionType] = fields;
-      const [file] = files;
+      const [compressionType] = fields.compressionType;
+      const [file] = files.file;
 
       if (!compressionTypes.includes(compressionType)) {
         res.statusCode = 400;
@@ -97,6 +130,23 @@ function createServer() {
   });
 
   return server;
+}
+
+function getContentType(ext) {
+  switch (ext) {
+    case '.css':
+      return 'text/css';
+    case '.js':
+      return 'application/javascript';
+    case '.png':
+      return 'image/png';
+    case '.jpg':
+      return 'image/jpeg';
+    case '.gif':
+      return 'image/gif';
+    default:
+      return 'text/plain';
+  }
 }
 
 module.exports = {

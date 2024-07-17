@@ -4,9 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
+  <link rel="stylesheet" href="./main.css">
 </head>
 <body>
-  <form action="/compress" method="post">
+  <form
+    id="compressionForm"
+    action="/compress"
+    method="post"
+    enctype="multipart/form-data"
+  >
     <input type="file" name="file">
     <select name="compressionType" id="compressionType">
       <option value="gzip">gzip</option>
