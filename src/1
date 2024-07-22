@@ -1,0 +1,61 @@
+if (req.method === 'POST' && req.url === '/compress') {
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, (err, fields, files) => {
+    if (err) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Error parsing the form');
+
+      return;
+    }
+
+    const file = files.file;
+    const compressionType = fields.compressionType;
+
+    if (!file || !compressionType) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Form is invalid');
+
+      return;
+    }
+
+    let compressor;
+    let extension;
+
+    switch (compressionType) {
+      case 'gzip':
+        compressor = zlib.createGzip();
+        extension = '.gz';
+        break;
+      case 'deflate':
+        compressor = zlib.createDeflate();
+        extension = '.dfl';
+        break;
+      case 'br':
+        compressor = zlib.createBrotliCompress();
+        extension = '.br';
+        break;
+      default:
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Unsupported compression type');
+
+        return;
+    }
+
+    const inputFile = fs.createReadStream(file.filepath);
+    const outputFileName = file.originalFilename + extension;
+
+    res.writeHead(200, {
+      'Content-Disposition': `attachment; filename="${outputFileName}"`,
+      'Content-Type': 'application/octet-stream',
+    });
+
+    inputFile.pipe(compressor).pipe(res);
+  });
+} else if (req.method === 'GET' && req.url === '/compress') {
+  res.writeHead(400, { 'Content-Type': 'text/plain' });
+  res.end('GET method not supported for /compress endpoint');
+} else {
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not Found');
+}
