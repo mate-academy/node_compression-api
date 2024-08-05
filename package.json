@@ -18,8 +18,8 @@
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
     "@mate-academy/eslint-config": "latest",
-    "@mate-academy/scripts": "^1.7.3",
-    "axios": "^1.6.7",
+    "@mate-academy/scripts": "^1.8.6",
+    "axios": "^1.7.3",
     "eslint": "^7.32.0",
     "eslint-plugin-jest": "^22.4.1",
     "eslint-plugin-node": "^8.0.1",
@@ -30,5 +30,9 @@
   },
   "mateAcademy": {
     "projectType": "javascript"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
   }
 }
