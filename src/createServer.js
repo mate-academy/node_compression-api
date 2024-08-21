@@ -17,19 +17,25 @@ function createServer() {
       deflate: zlib.createDeflate(),
       br: zlib.createBrotliCompress(),
     };
+    const errMessages = {
+      formErr: 'Invalid form data',
+      compressionErr: 'Unsupported compression type',
+      methodErr: 'only POST method is not allowed',
+      unknownPath: 'Bad request',
+    };
 
     if (urlNormalized.pathname === '/compress' && req.method === 'POST') {
       form.parse(req, (error, { compressionType }, { file }) => {
         if (error || !compressionType || !file) {
           res.writeHead(400, { 'Content-type': 'text/plain' });
 
-          return res.end('Invalid form data');
+          return res.end(errMessages.formErr);
         }
 
         if (!Object.keys(compressors).includes(compressionType[0])) {
           res.writeHead(400, { 'Content-Type': 'text/plain' });
 
-          return res.end('Unsupported compression type');
+          return res.end(errMessages.compressionErr);
         }
 
         const fStream = fs.createReadStream(file[0].filepath);
@@ -52,7 +58,7 @@ function createServer() {
     if (urlNormalized.pathname === '/compress' && req.method === 'GET') {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
 
-      return res.end('only POST method is not allowed');
+      return res.end(errMessages.methodErr);
     }
 
     if (urlNormalized.pathname === '/') {
@@ -66,7 +72,7 @@ function createServer() {
 
     res.statusCode = 404;
 
-    res.end('Bad request');
+    res.end(errMessages.unknownPath);
   });
 }
 
