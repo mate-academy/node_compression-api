@@ -18,21 +18,15 @@ function createServer() {
       br: zlib.createBrotliCompress(),
     };
 
-    if (!fs.existsSync(urlNormalized)) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-
-      return res.end('Trying access a non-existent endpoint');
-    }
-
     if (urlNormalized.pathname === '/compress' && req.method === 'POST') {
       form.parse(req, (error, { compressionType }, { file }) => {
         if (error || !compressionType || !file) {
           res.writeHead(400, { 'Content-type': 'text/plain' });
 
-          return res.end('Form is invalid');
+          return res.end('Invalid form data');
         }
 
-        if (!Object.keys(compressors).includes(compressionType)) {
+        if (!Object.keys(compressors).includes(compressionType[0])) {
           res.writeHead(400, { 'Content-Type': 'text/plain' });
 
           return res.end('Unsupported compression type');
@@ -44,10 +38,11 @@ function createServer() {
           'Content-Disposition': `attachment; filename=${file[0].originalFilename}.${compressionType}`,
         });
 
-        pipeline(fStream, compressors[compressionType], res, (err) => {
-          res.writeHead(400, { 'Contrnt-Type': 'text/plain' });
-
-          return res.end('Something went wrong', err);
+        pipeline(fStream, compressors[compressionType[0]], res, (err) => {
+          if (err) {
+            res.statusCode = 400;
+            res.end(error.message);
+          }
         });
       });
 
@@ -70,6 +65,7 @@ function createServer() {
     }
 
     res.statusCode = 404;
+
     res.end('Bad request');
   });
 }
