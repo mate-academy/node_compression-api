@@ -9,7 +9,7 @@ const compressionTypes = ['gzip', 'deflate', 'br'];
 function createServer() {
   const server = new http.Server();
 
-  server.on('request', async (req, res) => {
+  server.on('request', (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const pathname = url.pathname;
 
