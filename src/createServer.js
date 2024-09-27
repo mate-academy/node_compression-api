@@ -27,14 +27,20 @@ function createServer() {
           return res.end('Error parsing form data');
         }
 
-        const compressionType = fields.compressionType[0];
-        const uploadedFile = files.file;
+        if (!fields.compressionType) {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
 
-        if (!uploadedFile) {
+          return res.end('No compressionType provided');
+        }
+
+        if (!files.file) {
           res.writeHead(400, { 'Content-Type': 'text/plain' });
 
           return res.end('No file provided');
         }
+
+        const compressionType = fields.compressionType[0];
+        const uploadedFile = files.file;
 
         let compressStream;
         const fileName = uploadedFile[0].originalFilename;
@@ -43,11 +49,11 @@ function createServer() {
 
         switch (compressionType) {
           case 'gzip':
-            newFileName = fileName + '.gz';
+            newFileName = fileName + '.gzip';
             compressStream = zlib.createGzip();
             break;
           case 'deflate':
-            newFileName = fileName + '.dfl';
+            newFileName = fileName + '.deflate';
             compressStream = zlib.createDeflate();
             break;
           case 'br':
@@ -86,7 +92,7 @@ function createServer() {
 
         res.writeHead(200, {
           'Content-Type': 'text/plain',
-          'Content-Disposition': `attachment; filename="${newFileName}"`,
+          'Content-Disposition': `attachment; filename=${newFileName}`,
         });
 
         res.on('close', () => readStream.destroy());
