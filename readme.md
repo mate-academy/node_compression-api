@@ -1,5 +1,7 @@
 # Compression App (with Node.js)
+
 Implement a page with HTML `form` that allows to:
+
 - select a file (add input field with name `file`)
 - choose a compression type supported by zlib (add select field with name `compressionType` and options: `gzip`, `deflate`, `br`)
 - add a button to submit the form
@@ -10,6 +12,7 @@ Implement a page with HTML `form` that allows to:
   - compressed file: `file.txt.gz`
 
 To pass the task you also need to implement a server that:
+
 - use Streams
 - use `zlib` module
 - write server code in `createServer.js` file (it is used to test your app)
