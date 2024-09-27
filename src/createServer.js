@@ -9,7 +9,15 @@ function createServer() {
   const server = new Server();
 
   server.on('request', async (req, res) => {
-    if (req.url === '/compress' && req.method.toLowerCase() === 'post') {
+    if (req.url === '/compress' && req.method === 'GET') {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+
+      return res.end(
+        'You are trying to send a form by using GET method, use POST instead',
+      );
+    }
+
+    if (req.url === '/compress' && req.method === 'POST') {
       const form = new formidable.IncomingForm();
 
       form.parse(req, async (err, fields, files) => {
@@ -22,42 +30,28 @@ function createServer() {
         const compressionType = fields.compressionType[0];
         const uploadedFile = files.file;
 
-        const newFilePath =
-          './public/compressed_files/' + uploadedFile[0].originalFilename;
+        if (!uploadedFile) {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
 
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-
-        await fs.rename(uploadedFile[0].filepath, newFilePath, (e) => {
-          if (e) {
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-
-            return res.end('Error of writing file');
-          }
-        });
-
-        if (!fs.existsSync(newFilePath)) {
-          res.writeHead(404, { 'Content-Type': 'text/plain' });
-
-          return res.end('Compressed file not found');
+          return res.end('No file provided');
         }
 
-        const readStream = fs.createReadStream(newFilePath, 'utf8');
-
-        res.writeHead(200, {
-          'Content-Type': 'text/plain',
-          'Content-Disposition': 'attachment; filename="yourfile.txt"',
-        });
-
         let compressStream;
+        const fileName = uploadedFile[0].originalFilename;
+        const filePath = uploadedFile[0].filepath;
+        let newFileName;
 
         switch (compressionType) {
           case 'gzip':
+            newFileName = fileName + '.gz';
             compressStream = zlib.createGzip();
             break;
           case 'deflate':
+            newFileName = fileName + '.dfl';
             compressStream = zlib.createDeflate();
             break;
           case 'br':
+            newFileName = fileName + '.br';
             compressStream = zlib.createBrotliCompress();
             break;
           default:
@@ -65,6 +59,14 @@ function createServer() {
 
             return res.end('Invalid compression type');
         }
+
+        if (!fs.existsSync(filePath)) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+
+          return res.end('File not found');
+        }
+
+        const readStream = fs.createReadStream(filePath, 'utf8');
 
         readStream
           .on('error', () => {
@@ -82,9 +84,14 @@ function createServer() {
             res.end('Error reading compressed file');
           });
 
+        res.writeHead(200, {
+          'Content-Type': 'text/plain',
+          'Content-Disposition': `attachment; filename="${newFileName}"`,
+        });
+
         res.on('close', () => readStream.destroy());
       });
-    } else if (req.url === '/compress') {
+    } else if (req.url === '/') {
       const FORM_PAGE = './public/index.html';
 
       if (!fs.existsSync(FORM_PAGE)) {
