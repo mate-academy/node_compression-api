@@ -1,14 +1,13 @@
 'use strict';
 
 const http = require('http');
-// const path = require('path');
 const fs = require('fs');
-const zlib = require('zlib');
+const { createGzip, createBrotliCompress, createDeflate } = require('zlib');
 const formidable = require('formidable');
 const compressors = {
-  gzip: zlib.createGzip(),
-  br: zlib.createBrotliCompress(),
-  deflate: zlib.createDeflate(),
+  gzip: createGzip(),
+  br: createBrotliCompress(),
+  deflate: createDeflate(),
 };
 
 function createServer() {
@@ -37,7 +36,7 @@ function createServer() {
               <option value="deflate">deflate</option>
               <option value="br">br</option>
             </select>
-            <button type="submit">Upload</button>
+            <button type="submit">Compress</button>
           </form>
         </div>
       `);
@@ -55,13 +54,7 @@ function createServer() {
     }
 
     if (req.url === '/compress' && req.method === 'POST') {
-      const form = new formidable.IncomingForm({
-        uploadDir: `${__dirname}/../uploads`,
-        keepExtensions: true,
-        filename: (name, ext, part) => {
-          return part.originalFilename;
-        },
-      });
+      const form = new formidable.IncomingForm();
 
       form.parse(req, (err, { compressionType }, { file }) => {
         if (!file) {
@@ -94,6 +87,7 @@ function createServer() {
         if (err) {
           // eslint-disable-next-line no-console
           console.error(err);
+          res.end();
 
           return;
         }
@@ -104,7 +98,7 @@ function createServer() {
         const compressedFileName = `${selectedFile.originalFilename}.${selectedCompressionType}`;
         const fileReadStream = fs.createReadStream(selectedFilePath);
 
-        fileReadStream
+        const compressedFile = fileReadStream
           .on('error', () => {
             res.statusCode = 404;
             res.end('Cannot read file');
@@ -113,8 +107,7 @@ function createServer() {
           .on('error', () => {
             res.statusCode = 400;
             res.end('Something wrong with compression');
-          })
-          .pipe(res);
+          });
 
         res.statusCode = 200;
 
@@ -122,6 +115,7 @@ function createServer() {
           'Content-Disposition',
           `attachment; filename=${compressedFileName}`,
         );
+        compressedFile.pipe(res);
 
         res.on('close', () => {
           fileReadStream.destroy();
