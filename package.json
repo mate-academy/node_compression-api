@@ -17,8 +17,9 @@
   "license": "GPL-3.0",
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
+    "@linthtml/linthtml": "^0.10.1",
     "@mate-academy/eslint-config": "latest",
-    "@mate-academy/scripts": "^1.8.6",
+    "@mate-academy/scripts": "^1.9.12",
     "axios": "^1.7.2",
     "eslint": "^8.57.0",
     "eslint-plugin-jest": "^28.6.0",
