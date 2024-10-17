@@ -4,16 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const zlib = require('zlib');
 const formidable = require('formidable');
-const compressors = {
-  gzip: zlib.createGzip(),
-  br: zlib.createBrotliCompress(),
-  deflate: zlib.createDeflate(),
-};
-// const compressorExt = {
-//   gzip: 'gz',
-//   br: 'br',
-//   deflate: 'dfl',
-// };
+const { pipeline } = require('stream');
 
 function createServer() {
   const server = new http.Server();
@@ -38,76 +29,56 @@ function createServer() {
 
     if (req.url === '/compress' && req.method === 'POST') {
       const form = new formidable.IncomingForm({
-        uploadDir: `__dirname/../uploads`,
         filename: (name, ext, part) => part.originalFilename,
       });
 
       form.parse(req, (err, { compressionType }, { file }) => {
-        if (!file) {
-          // eslint-disable-next-line no-console
+        if (!file || !compressionType || err) {
           res.statusCode = 400;
-
-          res.end('Missing file');
+          res.end('Form error');
 
           return;
         }
 
-        if (!compressionType) {
-          // eslint-disable-next-line no-console
-          res.statusCode = 400;
-          res.end('Missing compression type');
-
-          return;
-        }
-
-        if (!Object.keys(compressors).includes(compressionType[0])) {
-          // eslint-disable-next-line no-console
+        if (!['gzip', 'br', 'deflate'].includes(compressionType[0])) {
           res.statusCode = 400;
           res.end('Unsupported compression type');
 
           return;
         }
 
-        if (err) {
-          // eslint-disable-next-line no-console
-          console.error(err);
-          res.end();
-
-          return;
-        }
-
-        const selectedCompressionType = compressionType[0];
-        const selectedFile = file[0];
-        const selectedFilePath = selectedFile.filepath;
-        const compressedFileName = `${selectedFile.originalFilename}.${selectedCompressionType}`;
-        const fileReadStream = fs.createReadStream(selectedFilePath);
-        const fileCompressorStream = fileReadStream.pipe(
-          compressors[selectedCompressionType].on('error', (error) => {
-            if (error) {
-              res.statusCode = 400;
-              res.end('Problem when compressing file');
-            }
-          }),
-        );
+        const fileStream = fs.createReadStream(file[0].filepath);
 
         res.statusCode = 200;
 
         res.setHeader(
           'Content-Disposition',
-          `attachment; filename=${compressedFileName}`,
+          `attachment; filename=${file[0].originalFilename}.${compressionType[0]}`,
         );
 
-        fileCompressorStream.pipe(res).on('error', (error) => {
+        let compressorType;
+
+        if (compressionType[0] === 'gzip') {
+          compressorType = zlib.createGzip();
+        } else if (compressionType[0] === 'br') {
+          compressorType = zlib.createBrotliCompress();
+        } else if (compressionType[0] === 'deflate') {
+          compressorType = zlib.createDeflate();
+        } else {
+          res.statusCode = 400;
+          res.end('unsupported compression type');
+        }
+
+        pipeline(fileStream, compressorType, res, (error) => {
           if (error) {
-            res.statusCode = 400;
-            res.end('something wrong');
+            // eslint-disable-next-line no-console
+            console.error('Pipeline failed', error);
           }
         });
 
         res.on('close', () => {
-          fileReadStream.destroy();
+          compressorType.destroy();
         });
-        res.end();
       });
 
       return;
