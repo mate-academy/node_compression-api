@@ -2,13 +2,18 @@
 
 const http = require('http');
 const fs = require('fs');
-const { createGzip, createBrotliCompress, createDeflate } = require('zlib');
+const zlib = require('zlib');
 const formidable = require('formidable');
 const compressors = {
-  gzip: createGzip(),
-  br: createBrotliCompress(),
-  deflate: createDeflate(),
+  gzip: zlib.createGzip(),
+  br: zlib.createBrotliCompress(),
+  deflate: zlib.createDeflate(),
 };
+// const compressorExt = {
+//   gzip: 'gz',
+//   br: 'br',
+//   deflate: 'dfl',
+// };
 
 function createServer() {
   const server = new http.Server();
@@ -17,29 +22,7 @@ function createServer() {
     if (req.url === '/' && req.method === 'GET') {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'text/html');
-
-      res.end(`
-        <div style="display: flex; flex-direction: column; align-items: center; font-family: Arial, Helvetica, sans-serif;">
-          <h1>Form</h1>
-          <form
-            action="/compress"
-            method="POST"
-            enctype="multipart/form-data"
-            style="display: flex; flex-direction: column; gap: 20px;"
-          >
-            <label for="file">Select a file:</label>
-            <input id="file" type="file" name="file" />
-            <label for="compressionType">Select compression type:</label>
-            <select id="compressionType" name="compressionType">
-              <option value="" selected>---</option>
-              <option value="gzip">gzip</option>
-              <option value="deflate">deflate</option>
-              <option value="br">br</option>
-            </select>
-            <button type="submit">Compress</button>
-          </form>
-        </div>
-      `);
+      fs.createReadStream('./public/index.html').pipe(res);
 
       return;
     }
@@ -54,13 +37,16 @@ function createServer() {
     }
 
     if (req.url === '/compress' && req.method === 'POST') {
-      const form = new formidable.IncomingForm();
+      const form = new formidable.IncomingForm({
+        uploadDir: `__dirname/../uploads`,
+        filename: (name, ext, part) => part.originalFilename,
+      });
 
       form.parse(req, (err, { compressionType }, { file }) => {
         if (!file) {
           // eslint-disable-next-line no-console
-          console.error('missing file');
           res.statusCode = 400;
+
           res.end('Missing file');
 
           return;
@@ -68,7 +54,6 @@ function createServer() {
 
         if (!compressionType) {
           // eslint-disable-next-line no-console
-          console.error('missing compression type');
           res.statusCode = 400;
           res.end('Missing compression type');
 
@@ -77,7 +62,6 @@ function createServer() {
 
         if (!Object.keys(compressors).includes(compressionType[0])) {
           // eslint-disable-next-line no-console
-          console.error('Unsupported compression type');
           res.statusCode = 400;
           res.end('Unsupported compression type');
 
@@ -97,17 +81,14 @@ function createServer() {
         const selectedFilePath = selectedFile.filepath;
         const compressedFileName = `${selectedFile.originalFilename}.${selectedCompressionType}`;
         const fileReadStream = fs.createReadStream(selectedFilePath);
-
-        const compressedFile = fileReadStream
-          .on('error', () => {
-            res.statusCode = 404;
-            res.end('Cannot read file');
-          })
-          .pipe(compressors[selectedCompressionType])
-          .on('error', () => {
-            res.statusCode = 400;
-            res.end('Something wrong with compression');
-          });
+        const fileCompressorStream = fileReadStream.pipe(
+          compressors[selectedCompressionType].on('error', (error) => {
+            if (error) {
+              res.statusCode = 400;
+              res.end('Problem when compressing file');
+            }
+          }),
+        );
 
         res.statusCode = 200;
 
@@ -115,11 +96,18 @@ function createServer() {
           'Content-Disposition',
           `attachment; filename=${compressedFileName}`,
         );
-        compressedFile.pipe(res);
+
+        fileCompressorStream.pipe(res).on('error', (error) => {
+          if (error) {
+            res.statusCode = 400;
+            res.end('something wrong');
+          }
+        });
 
         res.on('close', () => {
           fileReadStream.destroy();
         });
+        res.end();
       });
 
       return;
