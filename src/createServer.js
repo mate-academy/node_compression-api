@@ -18,7 +18,7 @@ function createServer() {
       return;
     }
 
-    if (req.url === '/compress' && req.method === 'GET') {
+    if (req.url === '/compress' && req.method !== 'POST') {
       res.statusCode = 400;
       res.setHeader('Content-Type', 'text/plain');
 
@@ -40,13 +40,20 @@ function createServer() {
           return;
         }
 
-        if (!['gzip', 'br', 'deflate'].includes(compressionType[0])) {
+        const compressors = {
+          gzip: zlib.createGzip,
+          br: zlib.createBrotliCompress,
+          deflate: zlib.createDeflate,
+        };
+
+        if (!Object.keys(compressors).includes(compressionType[0])) {
           res.statusCode = 400;
           res.end('Unsupported compression type');
 
           return;
         }
 
+        const compressorType = compressors[compressionType[0]]();
         const fileStream = fs.createReadStream(file[0].filepath);
 
         res.statusCode = 200;
@@ -55,19 +62,6 @@ function createServer() {
           'Content-Disposition',
           `attachment; filename=${file[0].originalFilename}.${compressionType[0]}`,
         );
-
-        let compressorType;
-
-        if (compressionType[0] === 'gzip') {
-          compressorType = zlib.createGzip();
-        } else if (compressionType[0] === 'br') {
-          compressorType = zlib.createBrotliCompress();
-        } else if (compressionType[0] === 'deflate') {
-          compressorType = zlib.createDeflate();
-        } else {
-          res.statusCode = 400;
-          res.end('unsupported compression type');
-        }
 
         pipeline(fileStream, compressorType, res, (error) => {
           if (error) {
