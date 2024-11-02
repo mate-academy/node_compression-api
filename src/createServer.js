@@ -63,16 +63,13 @@ function createServer() {
         return;
       }
 
-      const compressionType = Array.isArray(fields.compressionType)
-        ? fields.compressionType[0]
-        : fields.compressionType;
+      const compressionType =
+        Array.isArray(fields.compressionType) && fields.compressionType[0];
 
-      const filePath = Array.isArray(files.file)
-        ? files.file[0].filepath
-        : files.file;
-      const fileName = Array.isArray(files.file)
-        ? files.file[0].originalFilename
-        : files.file;
+      const filePath = Array.isArray(files.file) && files.file[0].filepath;
+
+      const fileName =
+        Array.isArray(files.file) && files.file[0].originalFilename;
 
       if (!filePath || !fileName || !compressionType) {
         res.statusCode = 400;
