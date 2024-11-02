@@ -84,6 +84,8 @@ function createServer() {
       if (!fs.existsSync(filePath)) {
         res.statusCode = 404;
         res.end('File not found!');
+
+        return;
       }
 
       let compressionData, extension;
