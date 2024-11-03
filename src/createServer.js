@@ -1,50 +1,27 @@
 /* eslint-disable no-console */
-/* eslint-disable curly */
 'use strict';
 
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { formidable } = require('formidable');
-const {
-  createGzip,
-  createBrotliCompress,
-  createDeflate,
-} = require('node:zlib');
+const zlib = require('node:zlib');
+const { pipeline } = require('node:stream');
 
 function createServer() {
-  const server = new http.Server();
-
-  server.on('request', async (req, res) => {
-    if (req.url === '/favicon.ico') {
-      res.statusCode = 200;
-      res.end('');
-
-      return;
-    }
-
+  return http.createServer((req, res) => {
     if (req.url === '/compress' && req.method === 'GET') {
-      res.statusCode = 400;
-      res.end('');
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
 
-      return;
+      return res.end('Request shoul be Post method!');
     }
 
     if (req.url === '/' && req.method === 'GET') {
-      const normalizePath = path.resolve(__dirname, 'index.html');
-
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'text/html');
-
+      const normalizePath = path.resolve(__dirname, '../public/index.html');
       const fileStream = fs.createReadStream(normalizePath);
 
-      fileStream.pipe(res).on('error', () => {});
-
-      fileStream.on('error', (err) => {
-        res.statusCode = 500;
-        res.end(`Server error ${err}`);
-      });
-
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      fileStream.pipe(res).on('error', (err) => console.error(err));
       res.on('close', () => fileStream.destroy());
 
       return;
@@ -52,92 +29,47 @@ function createServer() {
 
     if (req.method === 'POST' && req.url === '/compress') {
       const form = formidable({});
-      let fields, files;
+      const compressors = {
+        gzip: zlib.createGzip,
+        br: zlib.createBrotliCompress,
+        deflate: zlib.createDeflate,
+      };
 
-      try {
-        [fields, files] = await form.parse(req);
-      } catch (err) {
-        res.writeHead(err.httpCode || 400, { 'Content-Type': 'text/plain' });
-        res.end(String(err));
-
-        return;
-      }
-
-      const compressionType =
-        Array.isArray(fields.compressionType) && fields.compressionType[0];
-
-      const filePath = Array.isArray(files.file) && files.file[0].filepath;
-
-      const fileName =
-        Array.isArray(files.file) && files.file[0].originalFilename;
-
-      if (!filePath || !fileName || !compressionType) {
-        res.statusCode = 400;
-        res.end();
-
-        return;
-      }
-
-      if (!fs.existsSync(filePath)) {
-        res.statusCode = 404;
-        res.end('File not found!');
-
-        return;
-      }
-
-      let compressionData, extension;
-
-      switch (compressionType) {
-        case 'gzip':
-          compressionData = createGzip();
-          res.setHeader('Content-Encoding', 'gz');
-          extension = 'gzip';
-          break;
-        case 'deflate':
-          compressionData = createDeflate();
-          res.setHeader('Content-Encoding', '.dfl');
-          extension = 'deflate';
-          break;
-        case 'br':
-          compressionData = createBrotliCompress();
-          res.setHeader('Content-Encoding', '.br');
-          extension = 'br';
-          break;
-        default:
+      form.parse(req, (errors, { compressionType }, { file }) => {
+        if (!compressionType || !file || errors) {
           res.statusCode = 400;
-          res.end();
 
-          return;
-      }
+          return res.end('Form error!');
+        }
 
-      const fileStream = fs.createReadStream(filePath);
+        if (!compressors.hasOwnProperty([compressionType])) {
+          res.statusCode = 400;
 
-      res.statusCode = 200;
+          return res.end('No such compression type!');
+        }
 
-      res.writeHead(200, {
-        'Content-Type': 'text/html',
-        'Content-Disposition': `attachment; filename=${fileName}.${extension}`,
-      });
-      console.log(fields, files, req.method, compressionType);
+        const files = file[0];
+        const compressionTypes = compressionType[0];
+        const fileStream = fs.createReadStream(files.filepath);
+        const compression = compressors[compressionTypes]();
 
-      fileStream
-        .pipe(compressionData)
-        .pipe(res)
-        .on('error', (err) => {
-          res.statusCode = 500;
-          res.end(`Stream error: ${err.message}`);
+        res.writeHead(200, {
+          'Content-Disposition': `attachment; filename=${files.originalFilename}.${compressionTypes}`,
         });
+
+        pipeline(fileStream, compression, res, (err) => {
+          if (err) {
+            return err;
+          }
+        });
+      });
 
       return;
     }
 
-    if (req.url !== '/') {
-      res.statusCode = 404;
-      res.end();
-    }
+    res.statusCode = 404;
+    res.end('Page not found!');
   });
-
-  return server;
 }
 
 module.exports = {
