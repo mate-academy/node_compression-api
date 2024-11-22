@@ -30,7 +30,7 @@ function createServer() {
     const pathname = url.pathname;
 
     if (pathname === '/' && req.method === 'GET') {
-      res.setHeader('content-type', 'plain/text');
+      res.setHeader('content-type', 'text/plain');
       res.statusCode = 200;
       res.end();
 
@@ -38,7 +38,7 @@ function createServer() {
     }
 
     if (pathname !== '/compress') {
-      res.setHeader('content-type', 'plain/text');
+      res.setHeader('content-type', 'text/plain');
       res.statusCode = 404;
       res.end('non-existent endpoint');
 
@@ -46,7 +46,7 @@ function createServer() {
     }
 
     if (req.method !== 'POST') {
-      res.setHeader('content-type', 'plain/text');
+      res.setHeader('content-type', 'text/plain');
       res.statusCode = 400;
       res.end('Incorrect request method');
 
