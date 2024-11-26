@@ -3,7 +3,7 @@
 
 'use strict';
 
-const { createServer } = require('./createServer');
+const { createServer } = require('./createServer.ts');
 
 createServer().listen(5700, () => {
   console.log('Server started! 🚀');
