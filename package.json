@@ -33,5 +33,8 @@
   },
   "mateAcademy": {
     "projectType": "javascript"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0"
   }
 }

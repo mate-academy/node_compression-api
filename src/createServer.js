@@ -6,6 +6,7 @@ const zlib = require('zlib');
 const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
+const busboy = require('busboy');
 
 function createServer() {
   const server = http.createServer();
@@ -47,49 +48,47 @@ function createServer() {
       res.statusCode = 400;
       res.end('Method not allowed');
     } else if (req.method === 'POST' && req.url === '/compress') {
-      const chunks = [];
+      const contentType = req.headers['content-type'];
 
-      req.on('data', (chunk) => chunks.push(chunk));
+      if (!contentType || !contentType.includes('multipart/form-data')) {
+        res.statusCode = 400;
+        res.end('Invalid or missing Content-Type');
 
-      req.on('end', () => {
-        const data = Buffer.concat(chunks);
+        return;
+      }
 
-        if (data.length === 0) {
+      let fileBuffer = null;
+      let fileName = null;
+      let compressionType = null;
+
+      const bb = busboy({ headers: req.headers });
+
+      bb.on('file', (name, file, info) => {
+        const chunks = [];
+
+        fileName = info.filename;
+
+        file.on('data', (data) => {
+          chunks.push(data);
+        });
+
+        file.on('end', () => {
+          fileBuffer = Buffer.concat(chunks);
+        });
+      });
+
+      bb.on('field', (name, value) => {
+        if (name === 'compressionType') {
+          compressionType = value;
+        }
+      });
+
+      bb.on('finish', () => {
+        if (!fileBuffer || fileBuffer.length === 0) {
           res.statusCode = 400;
           res.end('No file provided');
 
           return;
-        }
-
-        const boundaryMatch = req.headers['content-type']?.match(
-          /boundary=(?:"([^"]+)"|([^;]+))/i,
-        );
-
-        if (!boundaryMatch) {
-          res.statusCode = 400;
-          res.end('Invalid content type');
-
-          return;
-        }
-
-        const boundary = boundaryMatch[1] || boundaryMatch[2];
-        const parts = data.toString().split(`--${boundary}`);
-
-        let compressionType;
-        let fileName;
-
-        for (const part of parts) {
-          if (part.includes('name="compressionType"')) {
-            compressionType = part.split('\r\n\r\n')[1]?.trim();
-          }
-
-          if (part.includes('filename=')) {
-            const filenameMatch = part.match(/filename="([^"]+)"/);
-
-            if (filenameMatch) {
-              fileName = filenameMatch[1];
-            }
-          }
         }
 
         if (!compressionType || !fileName) {
@@ -112,6 +111,7 @@ function createServer() {
             compressionStream = zlib.createBrotliCompress();
             break;
           default:
+            console.log(`Unsupported compression type: ${compressionType}`);
             res.statusCode = 400;
             res.end('Unsupported compression type');
 
@@ -132,19 +132,7 @@ function createServer() {
         );
         res.setHeader('Content-Type', 'application/octet-stream');
 
-        const fileContent = parts
-          .find((part) => part.includes('filename='))
-          ?.split('\r\n\r\n')[1]
-          ?.trim();
-
-        if (!fileContent) {
-          res.statusCode = 400;
-          res.end('No file content');
-
-          return;
-        }
-
-        const fileStream = Readable.from(Buffer.from(fileContent));
+        const fileStream = Readable.from(fileBuffer);
 
         fileStream
           .pipe(compressionStream)
@@ -155,6 +143,8 @@ function createServer() {
             res.end('Server error');
           });
       });
+
+      req.pipe(bb);
     } else {
       res.statusCode = 404;
       res.end('Not found');
