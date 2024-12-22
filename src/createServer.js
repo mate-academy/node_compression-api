@@ -61,12 +61,19 @@ function createServer() {
           return;
         }
 
-        const file = files.file[0];
-        const compressionType = fields.compressionType[0];
+        const file = files.file;
+        const compressionType = fields.compressionType;
 
         if (!compressionTypes[compressionType]) {
           res.statusCode = 400;
           res.end('Invalid compression type');
+
+          return;
+        }
+
+        if (!file.filepath) {
+          res.statusCode = 400;
+          res.end('File path is undefined');
 
           return;
         }
