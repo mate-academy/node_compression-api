@@ -61,8 +61,8 @@ function createServer() {
           return;
         }
 
-        const file = files.file;
-        const compressionType = fields.compressionType;
+        const file = files.file[0];
+        const compressionType = fields.compressionType[0];
 
         if (!compressionTypes[compressionType]) {
           res.statusCode = 400;
