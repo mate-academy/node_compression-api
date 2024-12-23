@@ -122,8 +122,6 @@ function createServer() {
           fs.createWriteStream(filePath + compressedExtension),
         );
 
-        res.statusCode = 200;
-
         res.on('close', () => {
           fileStream.destroy();
         });
