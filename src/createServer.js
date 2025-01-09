@@ -31,27 +31,39 @@ function createServer() {
         deflate: zlib.createDeflate,
       };
 
-      form.parse(req, (err, { compressionType }, { file }) => {
-        if (err || !file || !compressionType) {
+      form.parse(req, (err, fields, files) => {
+        if (err) {
           res.statusCode = 400;
-          res.end('Form error');
+          res.end('Form parsing error');
 
           return;
         }
 
-        if (!compressors.hasOwnProperty(compressionType[0])) {
+        const compressionType = Array.isArray(fields.compressionType)
+          ? fields.compressionType[0]
+          : fields.compressionType;
+
+        if (!compressionType || !compressors.hasOwnProperty(compressionType)) {
           res.statusCode = 400;
-          res.end('No such compression type');
+          res.end('Invalid or missing compression type');
 
           return;
         }
 
-        const uploadFile = file[0];
-        const gzipStream = compressors[compressionType[0]]();
-        const fileStream = fs.createReadStream(uploadFile.filepath);
+        const file = Array.isArray(files.file) ? files.file[0] : files.file;
+
+        if (!file || !file.filepath || !file.originalFilename) {
+          res.statusCode = 400;
+          res.end('Invalid or missing file');
+
+          return;
+        }
+
+        const gzipStream = compressors[compressionType]();
+        const fileStream = fs.createReadStream(file.filepath);
 
         res.writeHead(200, {
-          'content-disposition': `attachment; filename=${uploadFile.originalFilename}.${compressionType[0]}`,
+          'content-disposition': `attachment; filename=${file.originalFilename}.${compressionType}`,
         });
 
         pipeline(fileStream, gzipStream, res, (error) => {
@@ -61,7 +73,6 @@ function createServer() {
 
             return;
           }
-
           res.end();
         });
       });
