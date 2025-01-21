@@ -28,10 +28,16 @@ function createServer() {
           return res.end('Error parsing the form');
         }
 
-        // Переконуємося, що отримали коректні дані
-        const file = files.file ? files.file[0] : null;
+        const file = files.file
+          ? Array.isArray(files.file)
+            ? files.file[0]
+            : files.file
+          : null;
+
         const compressionType = fields.compressionType
-          ? fields.compressionType[0]
+          ? Array.isArray(fields.compressionType)
+            ? fields.compressionType[0]
+            : fields.compressionType
           : null;
 
         if (!file) {
@@ -57,8 +63,8 @@ function createServer() {
         const readStream = fs.createReadStream(file.filepath);
         const compressStream = method();
 
-        pipeline(readStream, compressStream, res, () => {
-          if (err) {
+        pipeline(readStream, compressStream, res, (error) => {
+          if (error) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Server Error');
           }
