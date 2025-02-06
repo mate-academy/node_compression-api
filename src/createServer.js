@@ -5,8 +5,9 @@ const http = require('node:http');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const fs = require('node:fs');
-const formidable = require('formidable');
 const { pipeline } = require('node:stream');
+const formidable = require('formidable');
+const mime = require('mime-types');
 
 function createServer() {
   const server = new http.Server();
@@ -14,6 +15,8 @@ function createServer() {
   server.on('request', (req, res) => {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const requestedPath = url.pathname.slice(1) || 'index.html';
+
+    console.log(requestedPath);
 
     if (req.method.toLowerCase() === 'get') {
       if (requestedPath === 'compress') {
@@ -23,7 +26,9 @@ function createServer() {
         return;
       }
 
-      const filePathToReturn = path.join('public', requestedPath);
+      const filePathToReturn = path.join('src', requestedPath);
+
+      console.log(filePathToReturn);
 
       if (!fs.existsSync(filePathToReturn)) {
         res.statusCode = 404;
@@ -32,16 +37,19 @@ function createServer() {
         return;
       }
 
+      const mimeType = mime.contentType(path.extname(filePathToReturn));
       const readStream = fs.createReadStream(filePathToReturn);
       const gzipStream = zlib.createGzip();
 
       res.statusCode = 200;
-      res.setHeader('Content-Type', 'text/html');
+      res.setHeader('Content-Type', mimeType);
       res.setHeader('Content-Encoding', 'gzip');
 
-      pipeline(readStream, gzipStream, res, () => {
-        res.statusCode = 500;
-        res.end('Internal Server Error');
+      pipeline(readStream, gzipStream, res, (err) => {
+        if (err) {
+          res.statusCode = 500;
+          res.end('Internal Server Error');
+        }
       });
 
       res.on('close', () => {
@@ -99,8 +107,10 @@ function createServer() {
         const fileStream = fs.createReadStream(file[0].filepath);
 
         pipeline(fileStream, compressor, res, (err) => {
-          res.statusCode = 500;
-          res.end(String(err));
+          if (err) {
+            res.statusCode = 500;
+            res.end(String(err));
+          }
         });
 
         res.on('close', () => fileStream.destroy());
