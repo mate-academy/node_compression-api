@@ -45,32 +45,53 @@ function createServer() {
       const form = new formidable.IncomingForm();
 
       form.parse(req, (err, fields, files) => {
-        const { compressionType } = fields;
-        const { file: uploadFileName } = files;
-
-        if (err || !compressionType || !uploadFileName) {
+        if (err) {
           console.log(err);
           res.writeHead(400, { 'Content-Type': 'text/plain' });
+
           res.end('Form parse error');
 
           return;
         }
 
+        // Validate compressionType and files
+        if (!fields.compressionType || !Array.isArray(fields.compressionType)) {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('Invalid compression type');
+
+          return;
+        }
+
+        const compressionType = fields.compressionType[0];
+
+        if (
+          !files.file ||
+          !Array.isArray(files.file) ||
+          files.file.length === 0
+        ) {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('No file uploaded');
+
+          return;
+        }
+
+        const uploadFile = files.file[0];
+
         let compressionStream;
         let newFileName;
 
-        switch (compressionType[0]) {
+        switch (compressionType) {
           case 'gzip':
             compressionStream = zlib.createGzip();
-            newFileName = `${uploadFileName[0].originalFilename}.gzip`;
+            newFileName = `${uploadFile.originalFilename}.gzip`;
             break;
           case 'deflate':
             compressionStream = zlib.createDeflate();
-            newFileName = `${uploadFileName[0].originalFilename}.deflate`;
+            newFileName = `${uploadFile.originalFilename}.deflate`;
             break;
           case 'br':
             compressionStream = zlib.createBrotliCompress();
-            newFileName = `${uploadFileName[0].originalFilename}.br`;
+            newFileName = `${uploadFile.originalFilename}.br`;
             break;
           default:
             res.writeHead(400, { 'Content-Type': 'text/plain' });
@@ -79,7 +100,7 @@ function createServer() {
             return;
         }
 
-        const fileStream = fs.createReadStream(uploadFileName[0].filepath);
+        const fileStream = fs.createReadStream(uploadFile.filepath);
 
         res.writeHead(200, {
           'Content-Disposition': `attachment; filename=${newFileName}`,
@@ -87,9 +108,11 @@ function createServer() {
         });
 
         pipeline(fileStream, compressionStream, res, (error) => {
-          console.log(error);
-          res.statusCode = 500;
-          res.end('Server Error');
+          if (error) {
+            console.log(error);
+            res.statusCode = 500;
+            res.end('Server Error');
+          }
         });
 
         res.on('close', () => fileStream.destroy());
@@ -100,7 +123,7 @@ function createServer() {
 
     if (req.url === '/compress' && req.method === 'GET') {
       res.writeHead(400, 'Not Found', { 'Content-Type': 'text/plain' });
-      res.end('Trying send a GET request to "/compress" endpoint');
+      res.end('Trying to send a GET request to "/compress" endpoint');
 
       return;
     }
